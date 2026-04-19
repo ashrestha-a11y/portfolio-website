@@ -2,13 +2,16 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
 const resendApiKey = process.env.RESEND_API_KEY;
-const destinationEmail = process.env.CONTACT_TO_EMAIL || "abhishek.shrestha289@gmail.com";
-const fromEmail = process.env.CONTACT_FROM_EMAIL || "Portfolio <onboarding@resend.dev>";
+const destinationEmail =
+  process.env.CONTACT_TO_EMAIL || "abhishek.shrestha289@gmail.com";
+const fromEmail =
+  process.env.CONTACT_FROM_EMAIL || "Portfolio <onboarding@resend.dev>";
 
 export async function POST(request: Request) {
   try {
     const { name, email, phone, message } = await request.json();
 
+    // Basic validation
     if (!name || !email || !message) {
       return NextResponse.json(
         { error: "Name, email, and message are required." },
@@ -28,7 +31,7 @@ export async function POST(request: Request) {
 
     const resend = new Resend(resendApiKey);
 
-    await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: fromEmail,
       to: destinationEmail,
       replyTo: email,
@@ -43,9 +46,16 @@ export async function POST(request: Request) {
       `,
     });
 
-    return NextResponse.json({ success: true });
+    if (error) {
+      return NextResponse.json(
+        { error: error.message || "Failed to send email." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data });
   } catch (error) {
-    console.error(error);
+    console.error("Contact API error:", error);
     return NextResponse.json(
       { error: "Something went wrong while sending your message." },
       { status: 500 }
@@ -53,11 +63,12 @@ export async function POST(request: Request) {
   }
 }
 
+// Helper function to escape HTML
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
